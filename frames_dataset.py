@@ -64,6 +64,8 @@ class FramesDataset(Dataset):
                  random_seed=0, pairs_list=None, augmentation_params=None):
         self.root_dir = root_dir
         self.videos = os.listdir(root_dir)
+        if ".DS_Store" in self.videos:
+            self.videos.remove(".DS_Store")
         self.frame_shape = tuple(frame_shape)
         self.pairs_list = pairs_list
         self.id_sampling = id_sampling
@@ -105,13 +107,16 @@ class FramesDataset(Dataset):
             name = self.videos[idx]
             path = os.path.join(self.root_dir, name)
 
-        video_name = os.path.basename(path)
-
+            video_name = os.path.basename(path)
+        print(video_name)
         if self.is_train and os.path.isdir(path):
-            frames = os.listdir(path)
-            num_frames = len(frames)
+            frames_source = os.listdir(os.path.join(path, "orig"))
+            frames_driving = os.listdir(os.path.join(path, "gened"))
+            
+            num_frames = len(frames_driving)
             frame_idx = np.sort(np.random.choice(num_frames, replace=True, size=2))
-            video_array = [img_as_float32(io.imread(os.path.join(path, frames[idx]))) for idx in frame_idx]
+            print(frame_idx)
+            video_array = [img_as_float32(io.imread(os.path.join(path,"orig", frames_source[frame_idx[0]]))), img_as_float32(io.imread(os.path.join(path,"gened", frames_driving[frame_idx[1]]))), img_as_float32(io.imread(os.path.join(path,"orig", frames_source[frame_idx[1]])))]
         else:
             video_array = read_video(path, frame_shape=self.frame_shape)
             num_frames = len(video_array)
@@ -126,9 +131,10 @@ class FramesDataset(Dataset):
         if self.is_train:
             source = np.array(video_array[0], dtype='float32')
             driving = np.array(video_array[1], dtype='float32')
-
+            target = np.array(video_array[2], dtype='float32')
             out['driving'] = driving.transpose((2, 0, 1))
             out['source'] = source.transpose((2, 0, 1))
+            out['target'] = target.transpose((2, 0, 1))
         else:
             video = np.array(video_array, dtype='float32')
             out['video'] = video.transpose((3, 0, 1, 2))

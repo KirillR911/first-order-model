@@ -151,13 +151,13 @@ class GeneratorFullModel(torch.nn.Module):
     def forward(self, x):
         kp_source = self.kp_extractor(x['source'])
         kp_driving = self.kp_extractor(x['driving'])
-
+        kp_target = self.kp_extractor(x['target'])
         generated = self.generator(x['source'], kp_source=kp_source, kp_driving=kp_driving)
-        generated.update({'kp_source': kp_source, 'kp_driving': kp_driving})
-
+        generated.update({'kp_source': kp_source, 'kp_driving': kp_driving, 'kp_target':kp_driving})
+        
         loss_values = {}
 
-        pyramide_real = self.pyramid(x['driving'])
+        pyramide_real = self.pyramid(x['target'])
         pyramide_generated = self.pyramid(generated['prediction'])
 
         if sum(self.loss_weights['perceptual']) != 0:
@@ -173,7 +173,7 @@ class GeneratorFullModel(torch.nn.Module):
 
         if self.loss_weights['generator_gan'] != 0:
             discriminator_maps_generated = self.discriminator(pyramide_generated, kp=detach_kp(kp_driving))
-            discriminator_maps_real = self.discriminator(pyramide_real, kp=detach_kp(kp_driving))
+            discriminator_maps_real = self.discriminator(pyramide_real, kp=detach_kp(kp_target))
             value_total = 0
             for scale in self.disc_scales:
                 key = 'prediction_map_%s' % scale
